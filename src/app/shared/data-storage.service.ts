@@ -1,36 +1,51 @@
 import { Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpHeaders, HttpParams, HttpRequest } from '@angular/common/http';
 
 import { RecipeService } from '../recipes/recipe.service';
 import { Recipe } from '../recipes/recipe.model';
 import { AuthService } from '../auth/auth.service';
+import {map} from 'rxjs/operators';
 
 @Injectable()
 export class DataStorageService {
-  constructor(private http: HttpClient,
+  constructor(private httpClient: HttpClient,
               private recipeService: RecipeService,
               private authService: AuthService) {
   }
 
   storeRecipes() {
-    const token = this.authService.getToken();
+    // const headers = new HttpHeaders().set('Authorization', 'Bearer afdklasflaldf');
 
-    return this.http.put('https://ng-test-c719d.firebaseio.com/recipes.json?auth=' + token, this.recipeService.getRecipes());
+    // return this.httpClient.put('https://ng-test-c719d.firebaseio.com/recipes.json', this.recipeService.getRecipes(), {
+    //   observe: 'body',
+    //   params: new HttpParams().set('auth', token)
+    //   // headers: headers
+    // });
+    const req = new HttpRequest('PUT', 'https://ng-test-c719d.firebaseio.com/recipes.json', this.recipeService.getRecipes(),
+      {reportProgress: true});
+    return this.httpClient.request(req);
   }
 
   getRecipes() {
-    const token = this.authService.getToken();
-
-    this.http.get('https://ng-test-c719d.firebaseio.com/recipes.json?auth=' + token)
-      .subscribe(
-        (recipes: Recipe[]) => {
+    // this.httpClient.get<Recipe[]>('https://ng-test-c719d.firebaseio.com/recipes.json?auth=' + token)
+    this.httpClient.get<Recipe[]>('https://ng-test-c719d.firebaseio.com/recipes.json', {
+      observe: 'body',
+      responseType: 'json'
+    }).pipe(
+      map(
+        (recipes) => {
+          console.log(recipes);
           for (const recipe of recipes) {
             if (!recipe['ingredients']) {
               recipe['ingredients'] = [];
             }
           }
-          this.recipeService.setRecipes(recipes);
+          return recipes;
         }
-      );
+      )).subscribe(
+      (recipes: Recipe[]) => {
+        this.recipeService.setRecipes(recipes);
+      }
+    );
   }
 }
